@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomCode": {
+        ".read": "data.exists()",
+        ".write": "!data.exists() || data.child('hostId').val() === newData.child('hostId').val()",
+        "players": {
+          "$playerId": {
+            ".write": true,
+            ".validate": "newData.hasChildren(['id', 'name', 'avatar', 'isHost', 'score', 'connected']) && newData.child('id').val() === $playerId && newData.child('name').isString() && newData.child('name').val().length <= 18"
+          }
+        }
+      }
+    }
+  }
+}
