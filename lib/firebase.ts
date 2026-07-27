@@ -36,6 +36,7 @@ export type Room = {
   oddPlayerId?: string;
   usedPairIds: string[];
   turnIndex: number;
+  turnOrder?: string[];
   deadline?: number;
   groupCaught?: boolean;
   players: Record<string, Player>;
@@ -99,7 +100,7 @@ export async function updateRoom(code: string, values: Partial<Room>) {
   await update(ref(db, `rooms/${code}`), values);
 }
 
-export async function beginRound(code: string, pair: WordPair, oddPlayerId: string) {
+export async function beginRound(code: string, pair: WordPair, oddPlayerId: string, requestedTurnOrder: string[]) {
   const db = getRealtimeDatabase();
   if (!db) return;
   await runTransaction(ref(db, `rooms/${code}`), (room: Room | null) => {
@@ -110,6 +111,10 @@ export async function beginRound(code: string, pair: WordPair, oddPlayerId: stri
         return [player.id, cleanPlayer];
       }),
     ) as Record<string, Player>;
+    const validTurnOrder = requestedTurnOrder.filter((playerId) => nextPlayers[playerId]);
+    const turnOrder = validTurnOrder.length === Object.keys(nextPlayers).length
+      ? validTurnOrder
+      : Object.keys(nextPlayers);
     return {
       ...room,
       phase: "clues",
@@ -118,6 +123,7 @@ export async function beginRound(code: string, pair: WordPair, oddPlayerId: stri
       oddPlayerId,
       usedPairIds: [...(room.usedPairIds ?? []), pair.id].slice(-wordHistoryLimit),
       turnIndex: 0,
+      turnOrder,
       deadline: Date.now() + 30_000,
       groupCaught: null,
       players: nextPlayers,
@@ -132,7 +138,9 @@ export async function submitClue(code: string, playerId: string, clue: string) {
   if (!db) return;
   await runTransaction(ref(db, `rooms/${code}`), (room: Room | null) => {
     if (!room || room.phase !== "clues") return room;
-    const order = Object.values(room.players);
+    const order = (room.turnOrder ?? Object.keys(room.players))
+      .map((id) => room.players[id])
+      .filter(Boolean);
     if (order[room.turnIndex]?.id !== playerId || room.players[playerId]?.clue) return room;
     room.players[playerId].clue = clue.trim().slice(0, 20);
     const isLastClue = room.turnIndex >= order.length - 1;
@@ -181,6 +189,7 @@ export async function leaveRoom(code: string, playerId: string) {
     if (!room?.players[playerId]) return room;
     const wasHost = room.hostId === playerId;
     delete room.players[playerId];
+    room.turnOrder = room.turnOrder?.filter((id) => id !== playerId);
     const remaining = Object.values(room.players);
     if (!remaining.length) return null;
     if (wasHost) {
@@ -202,7 +211,7 @@ export async function restartGame(code: string) {
       player.id,
       { id: player.id, name: player.name, avatar: player.avatar, isHost: player.isHost, score: 0, connected: true },
     ])) as Record<string, Player>;
-    return { ...room, phase: "lobby", round: 1, usedPairIds: [], turnIndex: 0, pair: null, oddPlayerId: null, deadline: null, groupCaught: null, players };
+    return { ...room, phase: "lobby", round: 1, usedPairIds: [], turnIndex: 0, turnOrder: [], pair: null, oddPlayerId: null, deadline: null, groupCaught: null, players };
   });
 }
 

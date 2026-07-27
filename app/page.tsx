@@ -27,6 +27,18 @@ const demoPlayers: Player[] = [
   { id: "zoe", name: "Zoe", avatar: "🐙", isHost: false, score: 0, connected: true },
 ];
 
+function shuffledTurnOrder(playerIds: string[], previousFirst?: string) {
+  const shuffled = [...playerIds];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  if (shuffled.length > 1 && shuffled[0] === previousFirst) {
+    shuffled.push(shuffled.shift()!);
+  }
+  return shuffled;
+}
+
 function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`logo ${compact ? "logo--compact" : ""}`} aria-label="Oddword">
@@ -466,6 +478,11 @@ export default function Home() {
   const [readyRound, setReadyRound] = useState(0);
   const [error, setError] = useState("");
   const players = useMemo(() => Object.values(room?.players ?? {}), [room]);
+  const orderedPlayers = useMemo(() => {
+    if (!room?.turnOrder?.length) return players;
+    const byId = new Map(players.map((player) => [player.id, player]));
+    return room.turnOrder.map((id) => byId.get(id)).filter((player): player is Player => Boolean(player));
+  }, [players, room?.turnOrder]);
   const pair = room?.pair;
   const oddPlayer = players.find((player) => player.id === room?.oddPlayerId) ?? players[players.length - 1];
   const isHost = room?.hostId === playerId;
@@ -553,11 +570,12 @@ export default function Home() {
     if (!room || !isHost || players.length < 3 || (room.phase === "reveal" && room.round >= 4)) return;
     const nextPair = randomPair(room.usedPairIds ?? []);
     const nextOdd = players[Math.floor(Math.random() * players.length)];
+    const nextTurnOrder = shuffledTurnOrder(players.map((player) => player.id), room.turnOrder?.[0]);
     if (firebaseEnabled) {
-      await beginRound(room.code, nextPair, nextOdd.id);
+      await beginRound(room.code, nextPair, nextOdd.id, nextTurnOrder);
       return;
     }
-    setRoom({ ...room, phase: "clues", pair: nextPair, oddPlayerId: nextOdd.id, turnIndex: 0 });
+    setRoom({ ...room, phase: "clues", pair: nextPair, oddPlayerId: nextOdd.id, turnIndex: 0, turnOrder: nextTurnOrder });
     setScreen("word");
   };
 
@@ -595,7 +613,7 @@ export default function Home() {
         <div className="game-shell game-shell--round">
           <AppHeader roomCode={roomCode} round={room.round} onLeave={exitRoom} />
           <ClueRound
-            players={players}
+            players={orderedPlayers}
             word={currentWord}
             round={room.round}
             turnIndex={room.turnIndex}
@@ -607,7 +625,7 @@ export default function Home() {
       {screen === "voting" && room && (
         <div className="game-shell game-shell--round">
           <AppHeader roomCode={roomCode} round={room.round} onLeave={exitRoom} />
-          <Voting players={players} playerId={playerId} round={room.round} onVote={(targetId) => submitVote(roomCode, playerId, targetId)} />
+          <Voting players={orderedPlayers} playerId={playerId} round={room.round} onVote={(targetId) => submitVote(roomCode, playerId, targetId)} />
         </div>
       )}
       {screen === "reveal" && room && pair && oddPlayer && (
