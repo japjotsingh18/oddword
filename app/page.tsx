@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   beginRound,
   createRoom,
+  defaultGameSettings,
   firebaseEnabled,
   getRoom,
   joinRoom,
@@ -14,6 +15,7 @@ import {
   submitVote,
   subscribeToRoom,
   type GamePhase,
+  type GameSettings,
   type Player,
   type Room,
 } from "@/lib/firebase";
@@ -71,18 +73,54 @@ function Timer({ seconds, total }: { seconds: number; total: number }) {
   );
 }
 
+function RulesEditor({
+  settings,
+  onChange,
+  compact = false,
+  minPlayers = 3,
+}: {
+  settings: GameSettings;
+  onChange: (settings: GameSettings) => void;
+  compact?: boolean;
+  minPlayers?: number;
+}) {
+  const fields: Array<{ key: keyof GameSettings; label: string; suffix: string; options: number[] }> = [
+    { key: "rounds", label: "Rounds", suffix: "rounds", options: [2, 3, 4, 5, 6, 8, 10] },
+    { key: "clueSeconds", label: "Clue time", suffix: "seconds", options: [15, 20, 30, 45, 60, 90] },
+    { key: "votingSeconds", label: "Voting time", suffix: "seconds", options: [10, 15, 20, 30, 45, 60] },
+    { key: "maxPlayers", label: "Room size", suffix: "players", options: [3, 4, 5, 6, 8, 10] },
+  ];
+  return (
+    <div className={`rules-editor ${compact ? "rules-editor--compact" : ""}`}>
+      {fields.map((field) => (
+        <label key={field.key}>
+          <span>{field.label}</span>
+          <select
+            value={settings[field.key]}
+            onChange={(event) => onChange({ ...settings, [field.key]: Number(event.target.value) })}
+          >
+            {field.options.filter((option) => field.key !== "maxPlayers" || option >= minPlayers).map((option) => <option key={option} value={option}>{option} {field.suffix}</option>)}
+          </select>
+        </label>
+      ))}
+    </div>
+  );
+}
+
 function HomeScreen({
   onCreate,
   onJoin,
   error,
 }: {
-  onCreate: (name: string) => Promise<void>;
+  onCreate: (name: string, settings: GameSettings) => Promise<void>;
   onJoin: (name: string, code: string) => Promise<void>;
   error?: string;
 }) {
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [joinOpen, setJoinOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [settings, setSettings] = useState<GameSettings>(defaultGameSettings);
 
   return (
     <main className="home-shell">
@@ -110,7 +148,16 @@ function HomeScreen({
               onChange={(event) => setName(event.target.value)}
             />
           </div>
-          {joinOpen ? (
+          {rulesOpen ? (
+            <div className="join-panel">
+              <div className="setup-heading"><span>Game rules</span><small>You can change these again after the game.</small></div>
+              <RulesEditor settings={settings} onChange={setSettings} />
+              <button className="button button--primary" onClick={() => onCreate(name.trim(), settings)}>
+                Create room <span>→</span>
+              </button>
+              <button className="text-button" onClick={() => setRulesOpen(false)}>Back</button>
+            </div>
+          ) : joinOpen ? (
             <div className="join-panel">
               <label htmlFor="room-code">Room code</label>
               <input
@@ -129,7 +176,7 @@ function HomeScreen({
             </div>
           ) : (
             <div className="action-stack">
-              <button className="button button--primary" disabled={!name.trim()} onClick={() => onCreate(name.trim())}>
+              <button className="button button--primary" disabled={!name.trim()} onClick={() => setRulesOpen(true)}>
                 <Icon>＋</Icon> Create a room
               </button>
               <div className="or"><span /> or <span /></div>
@@ -193,6 +240,7 @@ function Lobby({
   roomCode,
   round,
   players,
+  settings,
   isHost,
   onStart,
   onLeave,
@@ -200,6 +248,7 @@ function Lobby({
   roomCode: string;
   round: number;
   players: Player[];
+  settings: GameSettings;
   isHost: boolean;
   onStart: () => void;
   onLeave: () => void;
@@ -215,6 +264,12 @@ function Lobby({
           <span className="section-kicker">Your room is ready</span>
           <h1>Bring the<br /><em>crew together.</em></h1>
           <p>Share this room code with your friends. You’ll need at least 3 players to start.</p>
+          <div className="rules-summary">
+            <span><b>{settings.rounds}</b> rounds</span>
+            <span><b>{settings.clueSeconds}s</b> clues</span>
+            <span><b>{settings.votingSeconds}s</b> voting</span>
+            <span><b>{settings.maxPlayers}</b> max</span>
+          </div>
           <button className="code-card" onClick={copyCode} aria-label={`Copy room code ${roomCode}`}>
             <span>Room code</span>
             <strong>{roomCode}</strong>
@@ -233,7 +288,7 @@ function Lobby({
         </div>
         <aside className="player-panel">
           <div className="panel-heading">
-            <div><span>Players</span><b>{players.length}/10</b></div>
+            <div><span>Players</span><b>{players.length}/{settings.maxPlayers}</b></div>
             <span className="live-pill"><i /> Live</span>
           </div>
           <div className="player-list">
@@ -274,6 +329,7 @@ function ClueRound({
   round,
   turnIndex,
   playerId,
+  clueSeconds,
   onSubmit,
 }: {
   players: Player[];
@@ -281,18 +337,19 @@ function ClueRound({
   round: number;
   turnIndex: number;
   playerId: string;
+  clueSeconds: number;
   onSubmit: (clue: string) => Promise<void>;
 }) {
   const [clue, setClue] = useState("");
-  const [seconds, setSeconds] = useState(30);
+  const [seconds, setSeconds] = useState(clueSeconds);
   const currentPlayer = players[turnIndex];
   const isMyTurn = currentPlayer?.id === playerId;
   const me = players.find((player) => player.id === playerId);
   useEffect(() => {
-    setSeconds(30);
+    setSeconds(clueSeconds);
     const interval = window.setInterval(() => setSeconds((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(interval);
-  }, [turnIndex]);
+  }, [clueSeconds, turnIndex]);
   return (
     <main className="round-stage clue-stage">
       <div className="round-heading">
@@ -300,7 +357,7 @@ function ClueRound({
           <span className="section-kicker">Round {round} · {isMyTurn ? "Your turn" : `${currentPlayer?.name ?? "Player"} is up`}</span>
           <h1>{isMyTurn ? <>Give a <em>one-word</em> clue.</> : <>Read the <em>room.</em></>}</h1>
         </div>
-        <Timer seconds={seconds} total={30} />
+        <Timer seconds={seconds} total={clueSeconds} />
       </div>
       <div className="clue-layout">
         <section className="clue-card">
@@ -358,25 +415,28 @@ function Voting({
   players,
   playerId,
   round,
+  votingSeconds,
   onVote,
 }: {
   players: Player[];
   playerId: string;
   round: number;
+  votingSeconds: number;
   onVote: (id: string) => Promise<void>;
 }) {
   const [selected, setSelected] = useState("");
-  const [seconds, setSeconds] = useState(20);
+  const [seconds, setSeconds] = useState(votingSeconds);
   const me = players.find((player) => player.id === playerId);
   useEffect(() => {
+    setSeconds(votingSeconds);
     const interval = window.setInterval(() => setSeconds((value) => Math.max(0, value - 1)), 1000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [votingSeconds]);
   return (
     <main className="round-stage vote-stage">
       <div className="round-heading">
         <div><span className="section-kicker">Round {round} · All clues are in</span><h1>Who has the <em>oddword?</em></h1></div>
-        <Timer seconds={seconds} total={20} />
+        <Timer seconds={seconds} total={votingSeconds} />
       </div>
       <p className="vote-intro">Tap a player to cast your vote. Look for the clue that doesn’t quite fit.</p>
       <div className="vote-grid">
@@ -417,6 +477,7 @@ function Results({
   groupCaught,
   isHost,
   round,
+  settings,
   onNext,
   onRestart,
 }: {
@@ -426,9 +487,12 @@ function Results({
   groupCaught: boolean;
   isHost: boolean;
   round: number;
+  settings: GameSettings;
   onNext: () => void;
-  onRestart: () => void;
+  onRestart: (settings: GameSettings) => void;
 }) {
+  const [nextSettings, setNextSettings] = useState(settings);
+  const isGameOver = round >= settings.rounds;
   return (
     <main className="round-stage results-stage">
       <div className="confetti" aria-hidden="true">{Array.from({ length: 20 }, (_, i) => <i key={i} />)}</div>
@@ -441,7 +505,7 @@ function Results({
         <div className="odd-reveal"><span>{oddPlayer.name} had</span><strong>{pair.odd}</strong></div>
       </section>
       <section className="scoreboard">
-        <div className="panel-heading"><span>{round >= 4 ? "Final scoreboard" : "Scoreboard"}</span><small>After round {round} of 4</small></div>
+        <div className="panel-heading"><span>{isGameOver ? "Final scoreboard" : "Scoreboard"}</span><small>After round {round} of {settings.rounds}</small></div>
         {players.sort((a, b) => b.score - a.score).map((player, index) => (
           <div className="score-row" key={player.id}>
             <b>{index + 1}</b><div className={`avatar avatar-${index % 4}`}>{player.avatar}</div>
@@ -453,13 +517,17 @@ function Results({
       <div className="results-actions">
         {isHost ? (
           <>
-            {round < 4 ? (
+            {!isGameOver ? (
               <>
                 <button className="button button--primary" onClick={onNext}>Next round <span>→</span></button>
-                <button className="text-button" onClick={onRestart}>Restart game</button>
+                <button className="text-button" onClick={() => onRestart(settings)}>Restart game</button>
               </>
             ) : (
-              <button className="button button--primary" onClick={onRestart}>Play again <span>↻</span></button>
+              <div className="next-game-setup">
+                <span className="section-kicker">Set up the next game</span>
+                <RulesEditor settings={nextSettings} onChange={setNextSettings} compact minPlayers={players.length} />
+                <button className="button button--primary" onClick={() => onRestart(nextSettings)}>Create next game <span>↻</span></button>
+              </div>
             )}
           </>
         ) : (
@@ -484,6 +552,7 @@ export default function Home() {
     return room.turnOrder.map((id) => byId.get(id)).filter((player): player is Player => Boolean(player));
   }, [players, room?.turnOrder]);
   const pair = room?.pair;
+  const settings = room?.settings ?? defaultGameSettings;
   const oddPlayer = players.find((player) => player.id === room?.oddPlayerId) ?? players[players.length - 1];
   const isHost = room?.hostId === playerId;
 
@@ -504,7 +573,7 @@ export default function Home() {
     });
   }, [playerId, readyRound, roomCode]);
 
-  const enterLobby = async (name: string, code?: string) => {
+  const enterLobby = async (name: string, code?: string, gameSettings: GameSettings = defaultGameSettings) => {
     setError("");
     try {
       const nextPlayerId = firebaseEnabled ? makePlayerId() : "you";
@@ -521,7 +590,7 @@ export default function Home() {
         const localPlayers = Object.fromEntries(
           [{ ...player, isHost: true }, ...demoPlayers.slice(1)].map((item) => [item.id, item]),
         );
-        const localRoom: Room = { code: "PLUMS", hostId: player.id, phase: "lobby", round: 1, usedPairIds: [], turnIndex: 0, players: localPlayers };
+        const localRoom: Room = { code: "PLUMS", hostId: player.id, phase: "lobby", round: 1, usedPairIds: [], turnIndex: 0, settings: gameSettings, players: localPlayers };
         setPlayerId(player.id);
         setRoomCode(localRoom.code);
         setRoom(localRoom);
@@ -551,6 +620,7 @@ export default function Home() {
           round: 1,
           usedPairIds: [],
           turnIndex: 0,
+          settings: gameSettings,
           players: { [player.id]: player },
         };
         await createRoom(nextRoom);
@@ -567,7 +637,7 @@ export default function Home() {
   };
 
   const startRound = async () => {
-    if (!room || !isHost || players.length < 3 || (room.phase === "reveal" && room.round >= 4)) return;
+    if (!room || !isHost || players.length < 3 || (room.phase === "reveal" && room.round >= settings.rounds)) return;
     const nextPair = randomPair(room.usedPairIds ?? []);
     const nextOdd = players[Math.floor(Math.random() * players.length)];
     const nextTurnOrder = shuffledTurnOrder(players.map((player) => player.id), room.turnOrder?.[0]);
@@ -592,9 +662,9 @@ export default function Home() {
 
   return (
     <>
-      {screen === "home" && <HomeScreen error={error} onCreate={(name) => enterLobby(name)} onJoin={(name, code) => enterLobby(name, code)} />}
+      {screen === "home" && <HomeScreen error={error} onCreate={(name, selectedSettings) => enterLobby(name, undefined, selectedSettings)} onJoin={(name, code) => enterLobby(name, code)} />}
       {screen === "lobby" && room && (
-        <Lobby roomCode={roomCode} round={room.round} players={players} isHost={isHost} onStart={startRound} onLeave={exitRoom} />
+        <Lobby roomCode={roomCode} round={room.round} players={players} settings={settings} isHost={isHost} onStart={startRound} onLeave={exitRoom} />
       )}
       {screen === "word" && room && pair && (
         <div className="game-shell game-shell--round">
@@ -618,6 +688,7 @@ export default function Home() {
             round={room.round}
             turnIndex={room.turnIndex}
             playerId={playerId}
+            clueSeconds={settings.clueSeconds}
             onSubmit={(clue) => submitClue(roomCode, playerId, clue)}
           />
         </div>
@@ -625,7 +696,7 @@ export default function Home() {
       {screen === "voting" && room && (
         <div className="game-shell game-shell--round">
           <AppHeader roomCode={roomCode} round={room.round} onLeave={exitRoom} />
-          <Voting players={orderedPlayers} playerId={playerId} round={room.round} onVote={(targetId) => submitVote(roomCode, playerId, targetId)} />
+          <Voting players={orderedPlayers} playerId={playerId} round={room.round} votingSeconds={settings.votingSeconds} onVote={(targetId) => submitVote(roomCode, playerId, targetId)} />
         </div>
       )}
       {screen === "reveal" && room && pair && oddPlayer && (
@@ -638,8 +709,9 @@ export default function Home() {
             groupCaught={Boolean(room.groupCaught)}
             isHost={isHost}
             round={room.round}
+            settings={settings}
             onNext={startRound}
-            onRestart={() => restartGame(roomCode)}
+            onRestart={(nextSettings) => restartGame(roomCode, nextSettings)}
           />
         </div>
       )}

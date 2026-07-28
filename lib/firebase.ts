@@ -16,6 +16,20 @@ import type { WordPair } from "./word-pairs";
 
 export type GamePhase = "lobby" | "clues" | "voting" | "reveal";
 
+export type GameSettings = {
+  rounds: number;
+  clueSeconds: number;
+  votingSeconds: number;
+  maxPlayers: number;
+};
+
+export const defaultGameSettings: GameSettings = {
+  rounds: 4,
+  clueSeconds: 30,
+  votingSeconds: 20,
+  maxPlayers: 8,
+};
+
 export type Player = {
   id: string;
   name: string;
@@ -37,6 +51,7 @@ export type Room = {
   usedPairIds: string[];
   turnIndex: number;
   turnOrder?: string[];
+  settings?: GameSettings;
   deadline?: number;
   groupCaught?: boolean;
   players: Record<string, Player>;
@@ -83,7 +98,8 @@ export async function joinRoom(code: string, player: Player) {
   const db = getRealtimeDatabase();
   if (!db) return false;
   const room = await getRoom(code);
-  if (!room || room.phase !== "lobby" || Object.keys(room.players ?? {}).length >= 10) return false;
+  const maxPlayers = room?.settings?.maxPlayers ?? defaultGameSettings.maxPlayers;
+  if (!room || room.phase !== "lobby" || Object.keys(room.players ?? {}).length >= maxPlayers) return false;
   await set(ref(db, `rooms/${code}/players/${player.id}`), player);
   return true;
 }
@@ -124,7 +140,7 @@ export async function beginRound(code: string, pair: WordPair, oddPlayerId: stri
       usedPairIds: [...(room.usedPairIds ?? []), pair.id].slice(-wordHistoryLimit),
       turnIndex: 0,
       turnOrder,
-      deadline: Date.now() + 30_000,
+      deadline: Date.now() + (room.settings?.clueSeconds ?? defaultGameSettings.clueSeconds) * 1_000,
       groupCaught: null,
       players: nextPlayers,
     };
@@ -148,7 +164,11 @@ export async function submitClue(code: string, playerId: string, clue: string) {
       ...room,
       phase: isLastClue ? "voting" : "clues",
       turnIndex: isLastClue ? 0 : room.turnIndex + 1,
-      deadline: Date.now() + (isLastClue ? 20_000 : 30_000),
+      deadline: Date.now() + (
+        isLastClue
+          ? room.settings?.votingSeconds ?? defaultGameSettings.votingSeconds
+          : room.settings?.clueSeconds ?? defaultGameSettings.clueSeconds
+      ) * 1_000,
     };
   });
 }
@@ -202,7 +222,7 @@ export async function leaveRoom(code: string, playerId: string) {
   });
 }
 
-export async function restartGame(code: string) {
+export async function restartGame(code: string, settings?: GameSettings) {
   const db = getRealtimeDatabase();
   if (!db) return;
   await runTransaction(ref(db, `rooms/${code}`), (room: Room | null) => {
@@ -211,7 +231,7 @@ export async function restartGame(code: string) {
       player.id,
       { id: player.id, name: player.name, avatar: player.avatar, isHost: player.isHost, score: 0, connected: true },
     ])) as Record<string, Player>;
-    return { ...room, phase: "lobby", round: 1, usedPairIds: [], turnIndex: 0, turnOrder: [], pair: null, oddPlayerId: null, deadline: null, groupCaught: null, players };
+    return { ...room, phase: "lobby", round: 1, usedPairIds: [], turnIndex: 0, turnOrder: [], settings: settings ?? room.settings ?? defaultGameSettings, pair: null, oddPlayerId: null, deadline: null, groupCaught: null, players };
   });
 }
 

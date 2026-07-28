@@ -96,6 +96,13 @@ h1 em { color: var(--coral); font-weight: inherit; }
 .or span { height: 1px; background: var(--line); flex: 1; }
 .join-panel { margin-top: 22px; }
 .join-panel .button { margin-top: 12px; }
+.setup-heading { display: flex; justify-content: space-between; align-items: end; margin-bottom: 12px; }
+.setup-heading > span { font-weight: 850; }
+.setup-heading small { max-width: 145px; text-align: right; color: var(--muted); font-size: 9px; line-height: 1.35; }
+.rules-editor { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.rules-editor label { display: block; }
+.rules-editor label > span { display: block; margin: 0 0 6px; color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; }
+.rules-editor select { width: 100%; min-height: 43px; padding: 0 10px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font-size: 12px; font-weight: 750; }
 .code-input { width: 100%; background: #fff; border: 1.5px solid var(--line); border-radius: 12px; font-size: 20px; text-transform: uppercase; letter-spacing: 7px; text-align: center; }
 .text-button { border: 0; background: transparent; font-weight: 800; cursor: pointer; padding: 14px; display: block; margin: 0 auto; text-decoration: underline; }
 .firebase-note { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 20px; color: var(--muted); font-size: 10px; }
@@ -131,6 +138,9 @@ h1 em { color: var(--coral); font-weight: inherit; }
 .lobby-layout { max-width: 1110px; margin: 0 auto; padding: 86px 30px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 110px; align-items: center; }
 .lobby-main h1 { font-size: clamp(55px, 6vw, 78px); }
 .lobby-main > p { color: var(--muted); max-width: 480px; line-height: 1.6; }
+.rules-summary { display: flex; flex-wrap: wrap; gap: 7px; margin: 20px 0 0; }
+.rules-summary span { padding: 7px 10px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.6); color: var(--muted); font-size: 10px; }
+.rules-summary b { color: var(--ink); }
 .code-card { margin: 30px 0 25px; width: 360px; background: var(--ink); color: #fff; border: 0; padding: 23px 28px; border-radius: 16px; text-align: left; cursor: pointer; position: relative; box-shadow: 7px 7px 0 var(--lime); }
 .code-card > span { text-transform: uppercase; color: #aab6b0; font-size: 10px; letter-spacing: 2px; }
 .code-card strong { display: block; font-size: 40px; letter-spacing: 10px; margin: 5px 0; }
@@ -227,7 +237,12 @@ h1 em { color: var(--coral); font-weight: inherit; }
 .score-row > strong { flex: 1; }
 .score-row > span { font-family: Georgia, serif; font-size: 20px; }
 .score-row > span small { font-family: Arial, sans-serif; color: var(--muted); font-size: 9px; }
-.results-actions { width: 260px; margin: 25px auto 0; }
+.results-actions { width: min(520px, 100%); margin: 25px auto 0; }
+.results-actions > .button, .results-actions > .text-button { width: 260px; margin-left: auto; margin-right: auto; }
+.next-game-setup { padding: 22px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); text-align: left; }
+.next-game-setup .section-kicker { display: block; margin-bottom: 15px; color: var(--coral); }
+.next-game-setup .button { margin-top: 16px; }
+.rules-editor--compact { grid-template-columns: repeat(4, 1fr); }
 .confetti i { width: 7px; height: 15px; position: absolute; top: 40px; left: 50%; background: var(--coral); transform: translate(calc((var(--i, 1) - 10) * 30px), calc(abs(var(--i, 1) - 10) * 6px)) rotate(25deg); }
 .confetti i:nth-child(3n) { background: var(--lime-dark); }.confetti i:nth-child(3n+2) { background: var(--purple); }
 .confetti i:nth-child(1) { left: 10%; transform: rotate(30deg); }.confetti i:nth-child(2) { left: 18%; top: 90px; }.confetti i:nth-child(3) { left: 27%; top: 38px; transform: rotate(-40deg); }
@@ -259,6 +274,7 @@ h1 em { color: var(--coral); font-weight: inherit; }
   .hero { padding-top: 42px; }
   .hero h1 { font-size: 54px; line-height: .92; }
   .play-card { padding: 22px; box-shadow: 6px 7px 0 rgba(19,37,30,.08); }
+  .rules-editor--compact { grid-template-columns: 1fr 1fr; }
   .word-demo strong { font-size: 24px; }
   .how-section h2 { font-size: 46px; }
   .game-header { height: 64px; }
