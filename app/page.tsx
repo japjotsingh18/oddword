@@ -45,9 +45,9 @@ function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`logo ${compact ? "logo--compact" : ""}`} aria-label="Oddword">
       <span className="logo-mark">
-        <i />
-        <i />
-        <i />
+        <i>=</i>
+        <i>=</i>
+        <i>≠</i>
       </span>
       <span>oddword</span>
     </div>

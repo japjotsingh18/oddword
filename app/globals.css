@@ -42,10 +42,11 @@ button:disabled { opacity: .42; cursor: not-allowed; transform: none !important;
   border-bottom: 1px solid rgba(19,37,30,.12);
 }
 .logo { display: flex; align-items: center; gap: 11px; font-weight: 900; font-size: 27px; letter-spacing: -1.5px; }
-.logo-mark { display: flex; align-items: center; gap: 3px; transform: rotate(-8deg); }
-.logo-mark i { display: block; width: 8px; height: 25px; background: var(--ink); border-radius: 9px; }
-.logo-mark i:nth-child(2) { height: 34px; background: var(--coral); }
-.logo-mark i:nth-child(3) { height: 20px; background: var(--lime-dark); }
+.logo-mark { width: 49px; height: 34px; position: relative; display: block; }
+.logo-mark i { position: absolute; top: 5px; width: 25px; height: 27px; border: 2px solid var(--ink); border-radius: 8px; background: var(--paper); display: grid; place-items: center; font-style: normal; font-family: Arial, sans-serif; font-size: 15px; font-weight: 950; line-height: 1; box-shadow: 2px 2px 0 var(--ink); }
+.logo-mark i:nth-child(1) { left: 0; transform: rotate(-8deg); }
+.logo-mark i:nth-child(2) { left: 13px; top: 2px; transform: rotate(2deg); background: var(--lime); }
+.logo-mark i:nth-child(3) { left: 26px; top: 4px; transform: rotate(11deg); background: var(--coral); color: #fff; z-index: 2; }
 .how-button, .leave-button { border: 0; background: transparent; font-weight: 750; cursor: pointer; display: flex; gap: 8px; align-items: center; }
 .icon { width: 25px; height: 25px; border: 1.5px solid currentColor; border-radius: 50%; display: inline-grid; place-items: center; font-weight: 900; }
 
