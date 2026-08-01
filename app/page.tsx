@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  advanceClueTurn,
   beginRound,
   createRoom,
   defaultGameSettings,
   firebaseEnabled,
+  finalizeVoting,
   getRoom,
   joinRoom,
   leaveRoom,
@@ -573,10 +575,23 @@ export default function Home() {
     });
   }, [playerId, readyRound, roomCode]);
 
+  useEffect(() => {
+    if (!firebaseEnabled || !room || !isHost) return;
+    if (room.phase === "clues") {
+      const currentPlayerId = room.turnOrder?.[room.turnIndex];
+      if (currentPlayerId && room.players[currentPlayerId]?.clue) {
+        void advanceClueTurn(room.code);
+      }
+    }
+    if (room.phase === "voting" && players.length > 0 && players.every((player) => Boolean(player.vote))) {
+      void finalizeVoting(room.code);
+    }
+  }, [isHost, players, room]);
+
   const enterLobby = async (name: string, code?: string, gameSettings: GameSettings = defaultGameSettings) => {
     setError("");
     try {
-      const nextPlayerId = firebaseEnabled ? makePlayerId() : "you";
+      const nextPlayerId = firebaseEnabled ? await makePlayerId() : "you";
       const player: Player = {
         id: nextPlayerId,
         name,

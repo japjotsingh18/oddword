@@ -35,6 +35,7 @@ yarn-error.log*
 # Firebase local and credential files
 .firebase/
 firebase-debug.log*
+database-debug.log*
 firestore-debug.log*
 ui-debug.log*
 service-account*.json
