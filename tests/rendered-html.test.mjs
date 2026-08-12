@@ -54,3 +54,14 @@ test("keeps Firebase configuration outside tracked source", async () => {
   assert.match(gitignore, /^!\.env\.example$/m);
   assert.doesNotMatch(environmentTemplate, /AIza[0-9A-Za-z_-]{30,}/);
 });
+
+test("creates rooms without reading an unused room code first", async () => {
+  const [pageSource, firebaseSource] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/firebase.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(pageSource, /getRoom\(candidate\)/);
+  assert.match(pageSource, /await createRoom\(nextRoom\)/);
+  assert.doesNotMatch(firebaseSource, /roomExpirations[\s\S]*catch[\s\S]*rooms\/\$\{room\.code\}[\s\S]*null/);
+});

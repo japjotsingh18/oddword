@@ -136,12 +136,9 @@ export async function createRoom(room: Room) {
   if (room.hostId !== user.uid || !room.players[user.uid]) throw new Error("The room host could not be verified.");
   const expiresAt = Date.now() + roomTtlMs;
   await set(ref(db, `rooms/${room.code}`), { ...room, expiresAt });
-  try {
-    await set(ref(db, `roomExpirations/${room.code}`), expiresAt);
-  } catch (cause) {
-    await set(ref(db, `rooms/${room.code}`), null);
-    throw cause;
-  }
+  // Expiration indexing is housekeeping. A temporary index permission or
+  // connectivity failure must not roll back an otherwise playable room.
+  await set(ref(db, `roomExpirations/${room.code}`), expiresAt).catch(() => {});
 }
 
 export async function getRoom(code: string) {

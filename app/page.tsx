@@ -620,26 +620,33 @@ export default function Home() {
         const joined = await joinRoom(nextCode, player);
         if (!joined) throw new Error(existing.phase === "lobby" ? "This room is full." : "That game has already started.");
       } else {
+        let creationError: unknown;
         for (let attempt = 0; attempt < 6; attempt += 1) {
           const candidate = Array.from({ length: 5 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ"[Math.floor(Math.random() * 24)]).join("");
-          if (!(await getRoom(candidate))) {
+          const nextRoom: Room = {
+            code: candidate,
+            hostId: player.id,
+            phase: "lobby",
+            round: 1,
+            usedPairIds: [],
+            turnIndex: 0,
+            settings: gameSettings,
+            players: { [player.id]: player },
+          };
+          try {
+            await createRoom(nextRoom);
             nextCode = candidate;
+            setRoom(nextRoom);
             break;
+          } catch (cause) {
+            const code = typeof cause === "object" && cause && "code" in cause ? String(cause.code) : "";
+            if (!code.toLowerCase().includes("permission-denied") && !code.toLowerCase().includes("permission_denied")) {
+              throw cause;
+            }
+            creationError = cause;
           }
         }
-        if (!nextCode) throw new Error("Could not create a room. Please try again.");
-        const nextRoom: Room = {
-          code: nextCode,
-          hostId: player.id,
-          phase: "lobby",
-          round: 1,
-          usedPairIds: [],
-          turnIndex: 0,
-          settings: gameSettings,
-          players: { [player.id]: player },
-        };
-        await createRoom(nextRoom);
-        setRoom(nextRoom);
+        if (!nextCode) throw creationError ?? new Error("Could not create a room. Please try again.");
       }
 
       setPlayerId(nextPlayerId);

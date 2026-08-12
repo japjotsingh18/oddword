@@ -9,11 +9,15 @@
 </p>
 
 <p align="center">
-  <a href="https://oddword-6b124.web.app"><strong>Play Oddword</strong></a>
+  <a href="https://oddword-6b124.web.app/"><strong>🎮 Play Oddword now</strong></a>
   ·
   <a href="#how-to-play">How to play</a>
   ·
   <a href="#run-locally">Run locally</a>
+</p>
+
+<p align="center">
+  <strong>Live game:</strong> <a href="https://oddword-6b124.web.app/">https://oddword-6b124.web.app/</a>
 </p>
 
 <p align="center">
@@ -30,6 +34,14 @@ everyone received the same word except one person—and nobody knew who that
 person was?
 
 The next day, that idea became a playable multiplayer game.
+
+## Play online
+
+Oddword is free to play in your browser—no download or account required.
+Create a private room, share its five-letter code with your friends, and start
+playing:
+
+### [Play Oddword →](https://oddword-6b124.web.app/)
 
 ## How to play
 
@@ -137,6 +149,7 @@ starts in demo mode so the interface can still be explored.
 | `npm run dev` | Start the development server |
 | `npm run build` | Create the Sites-compatible production build |
 | `npm run build:firebase` | Create the Firebase Hosting build |
+| `npm run deploy:firebase` | Build and deploy Hosting together with database rules |
 | `npm run test` | Build the app and run the test suite |
 | `npm run lint` | Run ESLint |
 
